@@ -29,6 +29,7 @@ Table of Contents:
 In the previous sections we've discussed the static parts of a Neural Networks: how we can set up the network connectivity, the data, and the loss function. This section is devoted to the dynamics, or in other words, the process of learning the parameters and finding good hyperparameters.
 
 <a name='gradcheck'></a>
+
 ### Gradient Checks
 
 In theory, performing a gradient check is as simple as comparing the analytic gradient to the numerical gradient. In practice, the process is much more involved and error prone. Here are some tips, tricks, and issues to watch out for:
@@ -47,10 +48,10 @@ $$
 
 This requires you to evaluate the loss function twice to check every single dimension of the gradient (so it is about 2 times as expensive), but the gradient approximation turns out to be much more precise. To see this, you can use Taylor expansion of \\(f(x+h)\\) and \\(f(x-h)\\) and verify that the first formula has an error on order of \\(O(h)\\), while the second formula only has error terms on order of \\(O(h^2)\\) (i.e. it is a second order approximation).
 
-**Use relative error for the comparison**. What are the details of comparing the numerical gradient \\(f'\_n\\) and analytic gradient \\(f'\_a\\)? That is, how do we know if the two are not compatible? You might be temped to keep track of the difference \\(\mid f'\_a - f'\_n \mid \\) or its square and define the gradient check as failed if that difference is above a threshold. However, this is problematic. For example, consider the case where their difference is 1e-4. This seems like a very appropriate difference if the two gradients are about 1.0, so we'd consider the two gradients to match. But if the gradients were both on order of 1e-5 or lower, then we'd consider 1e-4 to be a huge difference and likely a failure. Hence, it is always more appropriate to consider the *relative error*:
+**Use relative error for the comparison**. What are the details of comparing the numerical gradient \\(f'_n\\) and analytic gradient \\(f'_a\\)? That is, how do we know if the two are not compatible? You might be temped to keep track of the difference \\(\mid f'_a - f'_n \mid \\) or its square and define the gradient check as failed if that difference is above a threshold. However, this is problematic. For example, consider the case where their difference is 1e-4. This seems like a very appropriate difference if the two gradients are about 1.0, so we'd consider the two gradients to match. But if the gradients were both on order of 1e-5 or lower, then we'd consider 1e-4 to be a huge difference and likely a failure. Hence, it is always more appropriate to consider the *relative error*:
 
 $$
-\frac{\mid f'\_a - f'\_n \mid}{\max(\mid f'\_a \mid, \mid f'\_n \mid)}
+\frac{\mid f'_a - f'_n \mid}{\max(\mid f'_a \mid, \mid f'_n \mid)}
 $$
 
 which considers their ratio of the differences to the ratio of the absolute values of both gradients. Notice that normally the relative error formula only includes one of the two terms (either one), but I prefer to max (or add) both to make it symmetric and to prevent dividing by zero in the case where one of the two is zero (which can often happen, especially with ReLUs). However, one must explicitly keep track of the case where both are zero and pass the gradient check in that edge case. In practice:
@@ -83,6 +84,7 @@ Note that it is possible to know if a kink was crossed in the evaluation of the 
 **Check only few dimensions**. In practice the gradients can have sizes of million parameters. In these cases it is only practical to check some of the dimensions of the gradient and assume that the others are correct. **Be careful**: One issue to be careful with is to make sure to gradient check a few dimensions for every separate parameter. In some applications, people combine the parameters into a single large parameter vector for convenience. In these cases, for example, the biases could only take up a tiny number of parameters from the whole vector, so it is important to not sample at random but to take this into account and check that all parameters receive the correct gradients.
 
 <a name='sanitycheck'></a>
+
 ### Before learning: sanity checks Tips/Tricks
 
 Here are a few sanity checks you might consider running before you plunge into expensive optimization:
@@ -92,6 +94,7 @@ Here are a few sanity checks you might consider running before you plunge into e
 - **Overfit a tiny subset of data**. Lastly and most importantly, before training on the full dataset try to train on a tiny portion (e.g. 20 examples) of your data and make sure you can achieve zero cost. For this experiment it's also best to set regularization to zero, otherwise this can prevent you from getting zero cost. Unless you pass this sanity check with a small dataset it is not worth proceeding to the full dataset. Note that it may happen that you can overfit very small dataset but still have an incorrect implementation. For instance, if your datapoints' features are random due to some bug, then it will be possible to overfit your small training set but you will never notice any generalization when you fold it your full dataset.
 
 <a name='baby'></a>
+
 ### Babysitting the learning process
 
 There are multiple useful quantities you should monitor during training of a neural network. These plots are the window into the training process and should be utilized to get intuitions about different hyperparameter settings and how they should be changed for more efficient learning. 
@@ -99,6 +102,7 @@ There are multiple useful quantities you should monitor during training of a neu
 The x-axis of the plots below are always in units of epochs, which measure how many times every example has been seen during training in expectation (e.g. one epoch means that every example has been seen once). It is preferable to track epochs rather than iterations since the number of iterations depends on the arbitrary setting of batch size.
 
 <a name='loss'></a>
+
 #### Loss function
 
 The first quantity that is useful to track during training is the loss, as it is evaluated on the individual batches during the forward pass. Below is a cartoon diagram showing the loss over time, and especially what the shape might tell you about the learning rate:
@@ -115,7 +119,10 @@ The amount of "wiggle" in the loss is related to the batch size. When the batch 
 
 Some people prefer to plot their loss functions in the log domain. Since learning progress generally takes an exponential form shape, the plot appears more as a slightly more interpretable straight line, rather than a hockey stick. Additionally, if multiple cross-validated models are plotted on the same loss graph, the differences between them become more apparent.
 
+Sometimes loss functions can look funny [lossfunctions.tumblr.com](http://lossfunctions.tumblr.com/).
+
 <a name='accuracy'></a>
+
 #### Train/Val accuracy
 
 The second important quantity to track while training a classifier is the validation/training accuracy. This plot can give you valuable insights into the amount of overfitting in your model:
@@ -129,55 +136,31 @@ The second important quantity to track while training a classifier is the valida
 </div>
 
 <a name='ratio'></a>
+
 #### Ratio of weights:updates
 
-The last quantity you might want to track is the ratio of the update magnitudes to to the value magnitudes. Note: *updates*, not the raw gradients (e.g. in vanilla sgd this would be the gradient multiplied by the learning rate). You might want to evaluate and track this ratio for every set of parameters independently. A rough heuristic is that this ratio should be somewhere around 1e-3. If it is lower than this then the learning rate might be too low. If it is higher then the learning rate is likely too high. Below is an example figure:
+The last quantity you might want to track is the ratio of the update magnitudes to the value magnitudes. Note: *updates*, not the raw gradients (e.g. in vanilla sgd this would be the gradient multiplied by the learning rate). You might want to evaluate and track this ratio for every set of parameters independently. A rough heuristic is that this ratio should be somewhere around 1e-3. If it is lower than this then the learning rate might be too low. If it is higher then the learning rate is likely too high. Here is a specific example:
 
-<div class="fig figcenter fighighlight">
-  <img src="/assets/nn3/values.jpeg" width="49%">
-  <img src="/assets/nn3/updates.jpeg" width="49%">
-  <div class="figcaption">
-    Example of a cross-validated 2-layer neural network where the learning rate is set relatively well. We are looking at the matrix of weights W1, and plotting the min and the max across all weights on the left. On the right, we plot the min and max of the updates for the weights, during gradient descent. The updates are getting smaller due to learning rate decay used in this example. Note that the approximate range of the updates is roughly 0.0002 and the range of values is about 0.02. This gives us a ratio of 0.0002 / 0.02 = 1e-2, which is within a relatively healthy limit for a smaller network.
-  </div>
-</div>
+```python
+# assume parameter vector W and its gradient vector dW
+param_scale = np.linalg.norm(W.ravel())
+update = -learning_rate*dW # simple SGD update
+update_scale = np.linalg.norm(update.ravel())
+W += update # the actual update
+print update_scale / param_scale # want ~1e-3
+```
 
 Instead of tracking the min or the max, some people prefer to compute and track the norm of the gradients and their updates instead. These metrics are usually correlated and often give approximately the same results.
 
 <a name='distr'></a>
+
 #### Activation / Gradient distributions per layer
 
-An incorrect initialization can slow down or even completely stall the learning process. Luckily, this issue can be diagnosed relatively easily. The most important statistic to keep track of is the variance of the activations and their gradients on each layer. For example, with an improper initialization the variance of the activations may looks like:
+An incorrect initialization can slow down or even completely stall the learning process. Luckily, this issue can be diagnosed relatively easily. One way to do so is to plot activation/gradient histograms for all layers of the network. Intuitively, it is not a good sign to see any strange distributions - e.g. with tanh neurons we would like to see a distribution of neuron activations between the full range of [-1,1], instead of seeing all neurons outputting zero, or all neurons being completely saturated at either -1 or 1.
 
-```python
-# Incorrectly initializing weights with zero mean gaussian with variance 0.01
-Layer 0: Variance: 1.005315e+00
-Layer 1: Variance: 3.123429e-04
-Layer 2: Variance: 1.159213e-06
-Layer 3: Variance: 5.467721e-10
-Layer 4: Variance: 2.757210e-13
-Layer 5: Variance: 3.316570e-16
-Layer 6: Variance: 3.123025e-19
-Layer 7: Variance: 6.199031e-22
-Layer 8: Variance: 6.623673e-25
-```
-Where we can see that the activations vanish extremely quickly in the higher layers of the network. This will in turn lead to weight gradients near zero, since during backprop they are dependent multiplicatively on the activations. The 8-layer Neural Network above was incorrectly initialized by drawing the weights from a gaussian with a standard deviation of 0.01. By correctly normalizing the weights, the variances look much more uniform:
-
-```python
-# Appropriately scaling the initialized weights:
-Layer 0: Variance: 1.002860e+00
-Layer 1: Variance: 7.015103e-01
-Layer 2: Variance: 6.048625e-01
-Layer 3: Variance: 8.517882e-01
-Layer 4: Variance: 6.362898e-01
-Layer 5: Variance: 4.329555e-01
-Layer 6: Variance: 3.539950e-01
-Layer 7: Variance: 3.809120e-01
-Layer 8: Variance: 2.497737e-01
-```
-
-In the second case, the layers were initialized so that the variance of each unit through the network is preserved (see the initialization section of Neural Networks for more details). It can also be helpful to keep track of these quantities as the learning progresses. If the variances display vastly different magnitudes it can be a sign of a problem.
 
 <a name='vis'></a>
+
 #### First-layer Visualizations
 
 Lastly, when one is working with image pixels it can be helpful and satisfying to plot the first-layer features visually:
@@ -191,6 +174,7 @@ Lastly, when one is working with image pixels it can be helpful and satisfying t
 </div>
 
 <a name='update'></a>
+
 ### Parameter updates
 
 Once the analytic gradient is computed with backpropagation, the gradients are used to perform a parameter update. There are several approaches for performing the update, which we discuss next.
@@ -198,6 +182,7 @@ Once the analytic gradient is computed with backpropagation, the gradients are u
 We note that optimization for deep networks is currently a very active area of research. In this section we highlight some established and common techniques you may see in practice, briefly describe their intuition, but leave a detailed analysis outside of the scope of the class. We provide some further pointers for an interested reader.
 
 <a name='sgd'></a>
+
 #### SGD and bells and whistles
 
 **Vanilla update**. The simplest form of update is to change the parameters along the negative gradient direction (since the gradient indicates the direction of increase, but we usually wish to minimize a loss function). Assuming a vector of parameters `x` and the gradient `dx`, the simplest update has the form:
@@ -223,9 +208,18 @@ Here we see an introduction of a `v` variable that is initialized at zero, and a
 
 > With Momentum update, the parameter vector will build up velocity in any direction that has consistent gradient.
 
-**Nesterov Momentum** is a slightly different version of the momentum update has recently been gaining popularity. It enjoys stronger theoretical converge guarantees for convex functions and also seems to work slightly better in practice than the momentum update described above.
+**Nesterov Momentum** is a slightly different version of the momentum update has recently been gaining popularity. It enjoys stronger theoretical converge guarantees for convex functions and in practice it also consistenly works slightly better than standard momentum.
 
-The core idea behind Nesterov momentum is that when the current parameter vector is at some position `x`, then looking at the momentum update above, we know that the momentum term alone (i.e. ignoring the second term with the gradient) is about to nudge the parameter vector by `mu * v`. Therefore, if we are about to compute the gradient, we can treat the future approximate position `x + mu * v` as a "lookahead" - this is a point in the vicinity of where we are soon going to end up. Hence, it makes sense to compute the gradient at `x + mu * v` instead of at the "old/stale" position `x`. That is, we would like to do the following:
+The core idea behind Nesterov momentum is that when the current parameter vector is at some position `x`, then looking at the momentum update above, we know that the momentum term alone (i.e. ignoring the second term with the gradient) is about to nudge the parameter vector by `mu * v`. Therefore, if we are about to compute the gradient, we can treat the future approximate position `x + mu * v` as a "lookahead" - this is a point in the vicinity of where we are soon going to end up. Hence, it makes sense to compute the gradient at `x + mu * v` instead of at the "old/stale" position `x`. 
+
+<div class="fig figcenter fighighlight">
+  <img src="/assets/nn3/nesterov.jpeg">
+  <div class="figcaption">
+    Nesterov momentum. Instead of evaluating gradient at the current position (red circle), we know that our momentum is about to carry us to the tip of the green arrow. With Nesterov momentum we therefore instead evaluate the gradient at this "looked-ahead" position.
+  </div>
+</div>
+
+That is, in a slightly awkward notation, we would like to do the following:
 
 ```python
 x_ahead = x + mu * v
@@ -234,7 +228,7 @@ v = mu * v - learning_rate * dx_ahead
 x += v
 ```
 
-However, in practice people prefer to express the update to look as similar to vanilla SGD or to the previous momentum update as possible. This is possible to achieve by manipulating the update above with a variable transform `x_head = x + mu * v`, and then expressing the update in terms of `x_ahead` instead of `x`. That is, the parameter vector we are actually storing is always the ahead version. The equations in terms of `xahead` (but renaming it back to `x`) then become:
+However, in practice people prefer to express the update to look as similar to vanilla SGD or to the previous momentum update as possible. This is possible to achieve by manipulating the update above with a variable transform `x_ahead = x + mu * v`, and then expressing the update in terms of `x_ahead` instead of `x`. That is, the parameter vector we are actually storing is always the ahead version. The equations in terms of `x_ahead` (but renaming it back to `x`) then become:
 
 ```python
 v_prev = v # back this up
@@ -249,17 +243,19 @@ We recommend this further reading to understand the source of these equations an
 
 
 <a name='anneal'></a>
+
 #### Annealing the learning rate
 
 In training deep networks, it is usually helpful to anneal the learning rate over time. Good intuition to have in mind is that with a high learning rate, the system contains too much kinetic energy and the parameter vector bounces around chaotically, unable to settle down into deeper, but narrower parts of the loss function. Knowing when to decay the learning rate can be tricky: Decay it slowly and you'll be wasting computation bouncing around chaotically with little improvement for a long time. But decay it too aggressively and the system will cool too quickly, unable to reach the best position it can. There are three common types of implementing the learning rate decay:
 
 - **Step decay**: Reduce the learning rate by some factor every few epochs. Typical values might be reducing the learning rate by a half every 5 epochs, or by 0.1 every 20 epochs. These numbers depend heavily on the type of problem and the model. One heuristic you may see in practice is to watch the validation error while training with a fixed learning rate, and reduce the learning rate by a constant (e.g. 0.5) whenever the validation error stops improving.
-- **Exponential decay.** has the mathematical form \\(\alpha = \alpha\_0 e^{-k t}\\), where \\(\alpha\_0, k\\) are hyperparameters and \\(t\\) is the iteration number (but you can also use units of epochs).
-- **1/t decay** has the mathematical form \\(\alpha = \alpha\_0 / (1 + k t )\\) where \\(a\_0, k\\) are hyperparameters and \\(t\\) is the iteration number.
+- **Exponential decay.** has the mathematical form \\(\alpha = \alpha_0 e^{-k t}\\), where \\(\alpha_0, k\\) are hyperparameters and \\(t\\) is the iteration number (but you can also use units of epochs).
+- **1/t decay** has the mathematical form \\(\alpha = \alpha_0 / (1 + k t )\\) where \\(a_0, k\\) are hyperparameters and \\(t\\) is the iteration number.
 
 In practice, we find that the step decay dropout is slightly preferable because the hyperparameters it involves (the fraction of decay and the step timings in units of epochs) are more interpretable than the hyperparameter \\(k\\). Lastly, if you can afford the computational budget, err on the side of slower decay and train for a longer time.
 
 <a name='second'></a>
+
 #### Second order methods
 
 A second, popular group of methods for optimization in context of deep learning is based on [Newton's method](http://en.wikipedia.org/wiki/Newton%27s_method_in_optimization), which iterates the following update:
@@ -278,11 +274,11 @@ However, even after we eliminate the memory concerns, a large downside of a naiv
 
 Additional references:
 
-- [On Optimization Methods for Deep Learning](http://ai.stanford.edu/~ang/papers/icml11-OptimizationForDeepLearning.pdf) from Le et al. is a paper from 2011 comparing SGD vs. L-BFGS. Some of its conclusions have since been challenged.
 - [Large Scale Distributed Deep Networks](http://research.google.com/archive/large_deep_networks_nips2012.html) is a paper from the Google Brain team, comparing L-BFGS and SGD variants in large-scale distributed optimization.
 - [SFO](http://arxiv.org/abs/1311.2115) algorithm strives to combine the advantages of SGD with advantages of L-BFGS.
 
 <a name='ada'></a>
+
 #### Per-parameter adaptive learning rate methods
 
 All previous approaches we've discussed so far manipulated the learning rate globally and equally for all parameters. Tuning the learning rates is an expensive process, so much work has gone into devising methods that can adaptively tune the learning rates, and even do so per parameter. Many of these methods may still require other hyperparameter settings, but the argument is that they are well-behaved for a broader range of hyperparameter values than the raw learning rate. In this section we highlight some common adaptive methods you may encounter in practice:
@@ -292,35 +288,44 @@ All previous approaches we've discussed so far manipulated the learning rate glo
 ```python
 # Assume the gradient dx and parameter vector x
 cache += dx**2
-x += - learning_rate * dx / np.sqrt(cache + 1e-8)
+x += - learning_rate * dx / (np.sqrt(cache) + eps)
 ```
 
-Notice that the variable `cache` has size equal to the size of the gradient, and keeps track of per-parameter sum of squared gradients. This is then used to normalize the parameter update step, element-wise. Notice that the weights that receive high gradients will have their effective learning rate reduced, while weights that receive small or infrequent updates will have their effective learning rate increased. Amusingly, the square root operation turns out to be very important and without it the algorithm performs much worse. The smoothing term `1e-8` avoids division by zero. A downside of Adagrad is that in case of Deep Learning, the monotonic learning rate usually proves too aggressive and stops learning too early.
+Notice that the variable `cache` has size equal to the size of the gradient, and keeps track of per-parameter sum of squared gradients. This is then used to normalize the parameter update step, element-wise. Notice that the weights that receive high gradients will have their effective learning rate reduced, while weights that receive small or infrequent updates will have their effective learning rate increased. Amusingly, the square root operation turns out to be very important and without it the algorithm performs much worse. The smoothing term `eps` (usually set somewhere in range from 1e-4 to 1e-8) avoids division by zero. A downside of Adagrad is that in case of Deep Learning, the monotonic learning rate usually proves too aggressive and stops learning too early.
 
 **RMSprop.** RMSprop is a very effective, but currently unpublished adaptive learning rate method. Amusingly, everyone who uses this method in their work currently cites [slide 29 of Lecture 6](http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf) of Geoff Hinton's Coursera class. The RMSProp update adjusts the Adagrad method in a very simple way in an attempt to reduce its aggressive, monotonically decreasing learning rate. In particular, it uses a moving average of squared gradients instead, giving:
 
 ```python
 cache = decay_rate * cache + (1 - decay_rate) * dx**2
-x += - learning_rate * dx / np.sqrt(cache + 1e-8)
+x += - learning_rate * dx / (np.sqrt(cache) + eps)
 ```
 
 Here, `decay_rate` is a hyperparameter and typical values are [0.9, 0.99, 0.999]. Notice that the `x+=` update is identical to Adagrad, but the `cache` variable is a "leaky". Hence, RMSProp still modulates the learning rate of each weight based on the magnitudes of its gradients, which has a beneficial equalizing effect, but unlike Adagrad the updates do not get monotonically smaller.
 
+**Adam.** [Adam](http://arxiv.org/abs/1412.6980) is a recently proposed update that looks a bit like RMSProp with momentum. The (simplified) update looks as follows:
+
+```python
+m = beta1*m + (1-beta1)*dx
+v = beta2*v + (1-beta2)*(dx**2)
+x += - learning_rate * m / (np.sqrt(v) + eps)
+```
+
+Notice that the update looks exactly as RMSProp update, except the "smooth" version of the gradient `m` is used instead of the raw (and perhaps noisy) gradient vector `dx`. Recommended values in the paper are `eps = 1e-8`, `beta1 = 0.9`, `beta2 = 0.999`. In practice Adam is currently recommended as the default algorithm to use, and often works slightly better than RMSProp. However, it is often also worth trying SGD+Nesterov Momentum as an alternative. The full Adam update also includes a *bias correction* mechanism, which compensates for the fact that in the first few time steps the vectors `m,v` are both initialized and therefore biased at zero, before they fully "warm up". We refer the reader to the paper for the details, or the course slides where this is expanded on.
+
 Additional References:
 
-- [Adadelta](http://arxiv.org/abs/1212.5701) by Matthew Zeiler is another relatively common adaptive learning rate method
-- [Adam: A Method for Stochastic Optimization](http://arxiv.org/abs/1412.6980)
 - [Unit Tests for Stochastic Optimization](http://arxiv.org/abs/1312.6055) proposes a series of tests as a standardized benchmark for stochastic optimization.
 
 <div class="fig figcenter fighighlight">
   <img src="/assets/nn3/opt2.gif" width="49%" style="margin-right:10px;">
   <img src="/assets/nn3/opt1.gif" width="49%">
   <div class="figcaption">
-    Animations that may help your intuitions about the learning process dynamics. <b>Left:</b> Contours of a loss surface and time evolution of different optimization algorithms. Notice the "overshooting" behavior of momentum-based methods, which make the optimization look like a ball rolling down the hill. <b>Right:</b> A visualization of a saddle point in the optimization landscape, where the curvature along different dimension has different signs (one dimension curves up and another down). Notice that SGD has a very hard time breaking symmetry and gets stuck on the top. Conversely, algorithms such as RMSprop will see very low gradients in the saddle direction. Tue to the denominator term in the RMSprop update, this will increase the effective learning rate along this direction, helping RMSProp proceed. Images credit: <a href="https://twitter.com/alecrad">Alec Radford</a>.
+    Animations that may help your intuitions about the learning process dynamics. <b>Left:</b> Contours of a loss surface and time evolution of different optimization algorithms. Notice the "overshooting" behavior of momentum-based methods, which make the optimization look like a ball rolling down the hill. <b>Right:</b> A visualization of a saddle point in the optimization landscape, where the curvature along different dimension has different signs (one dimension curves up and another down). Notice that SGD has a very hard time breaking symmetry and gets stuck on the top. Conversely, algorithms such as RMSprop will see very low gradients in the saddle direction. Due to the denominator term in the RMSprop update, this will increase the effective learning rate along this direction, helping RMSProp proceed. Images credit: <a href="https://twitter.com/alecrad">Alec Radford</a>.
   </div>
 </div>
 
 <a name='hyper'></a>
+
 ### Hyperparameter optimization
 
 As we've seen, training Neural Networks can involve many hyperparameter settings. The most common hyperparameters in context of Neural Networks include:
@@ -335,7 +340,7 @@ But as saw, there are many more relatively less sensitive hyperparameters, for e
 
 **Prefer one validation fold to cross-validation**. In most cases a single validation set of respectable size substantially simplifies the code base, without the need for cross-validation with multiple folds. You'll hear people say they "cross-validated" a parameter, but many times it is assumed that they still only used a single validation set.
 
-**Hyperparameter ranges**. Search for hyperparameters on log scale. For example, a typical sampling of the learning rate would look as follows: `learning_rate = 10 ** uniform(-6, 1)`. That is, we are generating a random random with a uniform distribution, but then raising it to the power of 10. The same strategy should be used for the regularization strength. As mentioned, for some parameters such as momentum, it is more common to search over a fixed set of values such as [0.5, 0.9, 0.95, 0.99] .
+**Hyperparameter ranges**. Search for hyperparameters on log scale. For example, a typical sampling of the learning rate would look as follows: `learning_rate = 10 ** uniform(-6, 1)`. That is, we are generating a random number from a uniform distribution, but then raising it to the power of 10. The same strategy should be used for the regularization strength. Intuitively, this is because learning rate and regularization strength have multiplicative effects on the training dynamics. For example, a fixed change of adding 0.01 to a learning rate has huge effects on the dynamics if the learning rate is 0.001, but nearly no effect if the learning rate when it is 10. This is because the learning rate multiplies the computed gradient in the update. Therefore, it is much more natural to consider a range of learning rate multiplied or divided by some value, than a range of learning rate added or subtracted to by some value. Some parameters (e.g. dropout) are instead usually searched in the original scale (e.g. `dropout = uniform(0,1)`).
 
 **Prefer random search to grid search**. As argued by Bergstra and Bengio in [Random Search for Hyper-Parameter Optimization](http://www.jmlr.org/papers/volume13/bergstra12a/bergstra12a.pdf), "randomly chosen trials are more efficient for hyper-parameter optimization than trials on a grid". As it turns out, this is also usually easier to implement.
 
@@ -353,9 +358,11 @@ But as saw, there are many more relatively less sensitive hyperparameters, for e
 **Bayesian Hyperparameter Optimization** is a whole area of research devoted to coming up with algorithms that try to more efficiently navigate the space of hyperparameters. The core idea is to appropriately balance the exploration - exploitation trade-off when querying the performance at different hyperparameters. Multiple libraries have been developed based on these models as well, among some of the better known ones are [Spearmint](https://github.com/JasperSnoek/spearmint), [SMAC](http://www.cs.ubc.ca/labs/beta/Projects/SMAC/), and [Hyperopt](http://jaberg.github.io/hyperopt/). However, in practical settings with ConvNets it is still relatively difficult to beat random search in a carefully-chosen intervals. See some additional from-the-trenches discussion [here](http://nlpers.blogspot.com/2014/10/hyperparameter-search-bayesian.html).
 
 <a name='eval'></a>
+
 ## Evaluation
 
 <a name='ensemble'></a>
+
 ### Model Ensembles
 
 In practice, one reliable approach to improving the performance of Neural Networks by a few percent is to train multiple independent models, and at test time average their predictions. As the number of models in the ensemble increases, the performance typically monotonically improves (though with diminishing returns). Moreover, the improvements are more dramatic with higher model variety in the ensemble. There are a few approaches to forming an ensemble:
@@ -368,19 +375,21 @@ In practice, one reliable approach to improving the performance of Neural Networ
 One disadvantage of model ensembles is that they take longer to evaluate on test example. An interested reader may find the recent work from Geoff Hinton on ["Dark Knowledge"](https://www.youtube.com/watch?v=EK61htlw8hY) inspiring, where the idea is to "distill" a good ensemble back to a single model by incorporating the ensemble log likelihoods into a modified objective.
 
 <a name='summary'></a>
+
 ## Summary
 
 To train a Neural Network:
 
 - Gradient check your implementation with a small batch of data and be aware of the pitfalls.
 - As a sanity check, make sure your initial loss is reasonable, and that you can achieve 100% training accuracy on a very small portion of the data
-- During training, monitor the loss, the training/validation accuracy, and if you're feeling fancier, the magnitude of gradient updates in relation to their values (it should be ~1e-3), and when dealing with ConvNets, the first-layer weights.
-- The most common update is to use SGD+Momentum, but a good recommendation is to use RMSProp per-parameter adaptive learning rate.
+- During training, monitor the loss, the training/validation accuracy, and if you're feeling fancier, the magnitude of updates in relation to parameter values (it should be ~1e-3), and when dealing with ConvNets, the first-layer weights.
+- The two recommended updates to use are either SGD+Nesterov Momentum or Adam.
 - Decay your learning rate over the period of the training. For example, halve the learning rate after a fixed number of epochs, or whenever the validation accuracy tops off.
 - Search for good hyperparameters with random search (not grid search). Stage your search from coarse (wide hyperparameter ranges, training only for 1-5 epochs), to fine (narrower rangers, training for many more epochs)
 - Form model ensembles for extra performance
 
 <a name='add'></a>
+
 ## Additional References
 
 - [SGD](http://research.microsoft.com/pubs/192769/tricks-2012.pdf) tips and tricks from Leon Bottou
